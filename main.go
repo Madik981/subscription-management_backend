@@ -20,7 +20,7 @@ func main() {
 	}
 
 	router := gin.Default()
-	h := handlers.NewHandler(db)
+	h := handlers.NewHandler(db, getEnv("JWT_SECRET", "super-secret-key"))
 	h.RegisterRoutes(router)
 
 	port := getEnv("PORT", "8080")
