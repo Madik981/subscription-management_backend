@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -12,7 +13,9 @@ import (
 )
 
 type Handler struct {
-	db *gorm.DB
+	db        *gorm.DB
+	jwtSecret []byte
+	tokenTTL  time.Duration
 }
 
 type CreatePlanRequest struct {
@@ -31,14 +34,27 @@ type UpdatePlanRequest struct {
 	BillingCycle *string  `json:"billing_cycle"`
 }
 
-func NewHandler(db *gorm.DB) *Handler {
-	return &Handler{db: db}
+func NewHandler(db *gorm.DB, jwtSecret string) *Handler {
+	return &Handler{
+		db:        db,
+		jwtSecret: []byte(jwtSecret),
+		tokenTTL:  24 * time.Hour,
+	}
 }
 
 func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	router.GET("/health", h.health)
+	auth := router.Group("/auth")
+	{
+		auth.POST("/register", h.register)
+		auth.POST("/login", h.login)
+		auth.GET("/me", h.authMiddleware(), h.me)
+	}
 
-	plans := router.Group("/plans")
+	protected := router.Group("/")
+	protected.Use(h.authMiddleware())
+
+	plans := protected.Group("/plans")
 	{
 		plans.POST("", h.createPlan)
 		plans.GET("", h.listPlans)
@@ -46,7 +62,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 		plans.PATCH("/:id", h.updatePlan)
 	}
 
-	users := router.Group("/users")
+	users := protected.Group("/users")
 	{
 		users.POST("", h.createUser)
 		users.GET("", h.listUsers)
@@ -54,7 +70,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 		users.PATCH("/:id", h.updateUser)
 	}
 
-	billings := router.Group("/billings")
+	billings := protected.Group("/billings")
 	{
 		billings.POST("", h.createBilling)
 		billings.GET("", h.listBillings)
