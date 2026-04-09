@@ -27,6 +27,7 @@ The API lets you manage plans, users, and billings.
 
 - PORT: server port (default: 8080)
 - DATABASE_URL: PostgreSQL connection string
+- JWT_SECRET: secret key for signing JWT tokens (default: super-secret-key)
 
 Example DATABASE_URL format:
 
@@ -50,6 +51,7 @@ host=localhost user=postgres password=postgres dbname=subscription_management po
 - id
 - name
 - email
+- password (stored in DB, hidden in JSON responses)
 - plan_id
 - plan
 - is_active
@@ -78,6 +80,95 @@ Status values:
 - failed
 
 ## API Endpoints
+
+### Authentication
+
+- POST /auth/register
+- POST /auth/login
+- GET /auth/me
+
+Register request JSON:
+
+```json
+{
+  "name": "John Student",
+  "email": "john@example.com",
+  "password": "12345678",
+  "plan_id": 1
+}
+```
+
+Register response JSON:
+
+```json
+{
+  "token": "<jwt_token>",
+  "user": {
+    "id": 1,
+    "name": "John Student",
+    "email": "john@example.com",
+    "plan_id": 1,
+    "plan": {
+      "id": 1,
+      "name": "Pro",
+      "description": "Pro monthly plan",
+      "price": 29.99,
+      "currency": "USD",
+      "billing_cycle": "monthly",
+      "created_at": "2026-04-09T10:00:00Z",
+      "updated_at": "2026-04-09T10:00:00Z"
+    },
+    "is_active": true,
+    "created_at": "2026-04-09T10:05:00Z",
+    "updated_at": "2026-04-09T10:05:00Z"
+  }
+}
+```
+
+Login request JSON:
+
+```json
+{
+  "email": "john@example.com",
+  "password": "12345678"
+}
+```
+
+Login response JSON:
+
+```json
+{
+  "token": "<jwt_token>",
+  "user": {
+    "id": 1,
+    "name": "John Student",
+    "email": "john@example.com",
+    "plan_id": 1,
+    "is_active": true,
+    "created_at": "2026-04-09T10:05:00Z",
+    "updated_at": "2026-04-09T10:05:00Z"
+  }
+}
+```
+
+Get current user response JSON (`GET /auth/me`):
+
+```json
+{
+  "id": 1,
+  "name": "John Student",
+  "email": "john@example.com",
+  "plan_id": 1,
+  "is_active": true,
+  "created_at": "2026-04-09T10:05:00Z",
+  "updated_at": "2026-04-09T10:05:00Z"
+}
+```
+
+Important: all `/plans`, `/users`, and `/billings` endpoints are protected now.
+Send JWT in `Authorization` header as:
+
+`Bearer <jwt_token>`
 
 ### Health
 
@@ -335,3 +426,4 @@ When request data is invalid or record is not found, API returns this shape:
 - PATCH endpoints support partial updates.
 - Users can be created with or without a plan.
 - If billing amount is not sent, it is taken from the selected plan price.
+- For this stage, passwords are checked as plain text (bcrypt dependency is added but not used yet).
