@@ -9,15 +9,10 @@ import (
 	"gorm.io/gorm"
 
 	"subscription-management_backend/handlers"
-	"subscription-management_backend/models"
 )
 
 func main() {
 	db := connectDB()
-
-	if err := db.AutoMigrate(&models.Plan{}, &models.User{}, &models.Billing{}); err != nil {
-		log.Fatalf("failed to run migrations: %v", err)
-	}
 
 	router := gin.Default()
 	h := handlers.NewHandler(db, getEnv("JWT_SECRET", "super-secret-key"))

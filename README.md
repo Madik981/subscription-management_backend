@@ -10,6 +10,7 @@ The API lets you manage plans, users, and billings.
 - Gin (HTTP API)
 - GORM (ORM)
 - PostgreSQL (database)
+- golang-migrate (SQL migrations)
 
 ## Project Structure
 
@@ -28,10 +29,35 @@ The API lets you manage plans, users, and billings.
 - PORT: server port (default: 8080)
 - DATABASE_URL: PostgreSQL connection string
 - JWT_SECRET: secret key for signing JWT tokens (default: super-secret-key)
+- DB_URL: PostgreSQL URL for Makefile migration commands
 
 Example DATABASE_URL format:
 
 host=localhost user=postgres password=postgres dbname=subscription_management port=5432 sslmode=disable TimeZone=UTC
+
+Example DB_URL format (used by Makefile):
+
+postgres://postgres:postgres@localhost:5432/subscription_management?sslmode=disable
+
+## Migrations
+
+This project uses SQL migrations from the `migrations` folder with golang-migrate.
+
+- `000001_init_schema.up.sql` creates tables and indexes
+- `000001_init_schema.down.sql` drops them
+
+Important: app startup does not use `AutoMigrate` now.
+You should run migrations before starting the API.
+
+## Makefile Commands
+
+- `make migrate-install`
+- `make migrate-up`
+- `make migrate-down`
+- `make migrate-down1`
+- `make migrate-version`
+- `make migrate-force VERSION=1`
+- `make migrate-create NAME=add_new_column`
 
 ## Data Models
 
