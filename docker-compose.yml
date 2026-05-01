@@ -1,0 +1,66 @@
+services:
+  postgres-accounts:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${ACCOUNTS_DB_NAME}
+    ports:
+      - "2345:5432"
+    volumes:
+      - accounts_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d subscription_management_accounts"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-billing:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${BILLING_DB_NAME}
+    ports:
+      - "2346:5432"
+    volumes:
+      - billing_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d subscription_management_billing"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  accounts-service:
+    image: madik98/subscription-management_account-service
+    environment:
+      ACCOUNTS_PORT: ${ACCOUNTS_PORT}
+      ACCOUNTS_DATABASE_URL: ${ACCOUNTS_DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      BILLING_SERVICE_URL: ${BILLING_SERVICE_URL}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-accounts:
+        condition: service_healthy
+    restart: unless-stopped
+
+  billing-service:
+    image: madik98/subscription-management_billing-service
+    environment:
+      BILLING_PORT: ${BILLING_PORT}
+      BILLING_DATABASE_URL: ${BILLING_DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      ACCOUNTS_SERVICE_URL: ${ACCOUNTS_SERVICE_URL}
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres-billing:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  accounts_db_data:
+  billing_db_data:
