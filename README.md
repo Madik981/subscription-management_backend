@@ -1,455 +1,512 @@
-# Subscription Management Backend
+# Subscription Management Backend (Microservices)
 
-Hi! This is my student backend project for subscription management.
-I built it with Go, Gin, GORM, and PostgreSQL.
-The API lets you manage plans, users, and billings.
+This project is split into two Go microservices for subscription management.
+
+## Services
+
+- accounts-service: authentication and user management (port 8080)
+- billing-service: plans and billings (port 8081)
 
 ## Stack
 
 - Go 1.25
 - Gin (HTTP API)
 - GORM (ORM)
-- PostgreSQL (database)
+- PostgreSQL
 - golang-migrate (SQL migrations)
+- resty v2 (internal HTTP calls)
 
-## Project Structure
+## Repository Layout
 
-- main.go
-- models/
-  - plan.go
-  - user.go
-  - billing.go
-- handlers/
-  - plan_handler.go
-  - user_handler.go
-  - billing_handler.go
+- accounts-service/
+- billing-service/
+- docker-compose.yml
+- Makefile
+- .env.example
+
+## Quick Start (Docker)
+
+1) Create your env file (optional if you already have one):
+
+```bash
+cp .env.example .env
+```
+
+2) Start the stack:
+
+```bash
+docker compose up -d
+```
+
+3) Run migrations from the host:
+
+```bash
+make migrate-accounts-up ACCOUNTS_DB_URL=postgres://postgres:postgres@localhost:2345/subscription_management_accounts?sslmode=disable
+make migrate-billing-up BILLING_DB_URL=postgres://postgres:postgres@localhost:2346/subscription_management_billing?sslmode=disable
+```
+
+4) Stop the stack:
+
+```bash
+docker compose down
+```
 
 ## Environment Variables
 
-- PORT: server port (default: 8080)
-- DATABASE_URL: PostgreSQL connection string
-- JWT_SECRET: secret key for signing JWT tokens (default: super-secret-key)
-- DB_URL: PostgreSQL URL for Makefile migration commands
+The compose file loads values from .env. Most values are also available in .env.example.
 
-Example DATABASE_URL format:
+Core settings:
 
-host=localhost user=postgres password=postgres dbname=subscription_management port=5432 sslmode=disable TimeZone=UTC
+- POSTGRES_USER
+- POSTGRES_PASSWORD
+- ACCOUNTS_DB_NAME
+- BILLING_DB_NAME
+- ACCOUNTS_PORT
+- BILLING_PORT
+- JWT_SECRET
+- INTERNAL_TOKEN
 
-Example DB_URL format (used by Makefile):
+Service connection strings (container network):
 
-postgres://postgres:postgres@localhost:5432/subscription_management?sslmode=disable
+- ACCOUNTS_DATABASE_URL
+- BILLING_DATABASE_URL
+- BILLING_SERVICE_URL
+- ACCOUNTS_SERVICE_URL
 
-## Migrations
+Migration URLs (host usage):
 
-This project uses SQL migrations from the `migrations` folder with golang-migrate.
+- ACCOUNTS_DB_URL
+- BILLING_DB_URL
 
-- `000001_init_schema.up.sql` creates tables and indexes
-- `000001_init_schema.down.sql` drops them
-
-Important: app startup does not use `AutoMigrate` now.
-You should run migrations before starting the API.
+Note: Postgres ports are exposed as 2345 (accounts) and 2346 (billing) on the host, but services inside the Docker network connect to port 5432.
 
 ## Makefile Commands
 
-- `make migrate-install`
-- `make migrate-up`
-- `make migrate-down`
-- `make migrate-down1`
-- `make migrate-version`
-- `make migrate-force VERSION=1`
-- `make migrate-create NAME=add_new_column`
+- make migrate-install
+- make migrate-accounts-up
+- make migrate-accounts-down
+- make migrate-accounts-down1
+- make migrate-accounts-version
+- make migrate-accounts-force VERSION=1
+- make migrate-accounts-create NAME=add_new_column
+- make migrate-billing-up
+- make migrate-billing-down
+- make migrate-billing-down1
+- make migrate-billing-version
+- make migrate-billing-force VERSION=1
+- make migrate-billing-create NAME=add_new_column
 
-## Data Models
+## API Summary
 
-### Plan
-
-- id
-- name
-- description
-- price
-- currency
-- billing_cycle
-- created_at
-- updated_at
-
-### User
-
-- id
-- name
-- email
-- password (stored in DB, hidden in JSON responses)
-- plan_id
-- plan
-- is_active
-- created_at
-- updated_at
-
-### Billing
-
-- id
-- user_id
-- user
-- plan_id
-- plan
-- amount
-- status
-- due_date
-- paid_at
-- description
-- created_at
-- updated_at
-
-Status values:
-
-- pending
-- paid
-- failed
-
-## API Endpoints
-
-### Authentication
+Accounts service:
 
 - POST /auth/register
 - POST /auth/login
 - GET /auth/me
-
-Register request JSON:
-
-```json
-{
-  "name": "John Student",
-  "email": "john@example.com",
-  "password": "12345678",
-  "plan_id": 1
-}
-```
-
-Register response JSON:
-
-```json
-{
-  "token": "<jwt_token>",
-  "user": {
-    "id": 1,
-    "name": "John Student",
-    "email": "john@example.com",
-    "plan_id": 1,
-    "plan": {
-      "id": 1,
-      "name": "Pro",
-      "description": "Pro monthly plan",
-      "price": 29.99,
-      "currency": "USD",
-      "billing_cycle": "monthly",
-      "created_at": "2026-04-09T10:00:00Z",
-      "updated_at": "2026-04-09T10:00:00Z"
-    },
-    "is_active": true,
-    "created_at": "2026-04-09T10:05:00Z",
-    "updated_at": "2026-04-09T10:05:00Z"
-  }
-}
-```
-
-Login request JSON:
-
-```json
-{
-  "email": "john@example.com",
-  "password": "12345678"
-}
-```
-
-Login response JSON:
-
-```json
-{
-  "token": "<jwt_token>",
-  "user": {
-    "id": 1,
-    "name": "John Student",
-    "email": "john@example.com",
-    "plan_id": 1,
-    "is_active": true,
-    "created_at": "2026-04-09T10:05:00Z",
-    "updated_at": "2026-04-09T10:05:00Z"
-  }
-}
-```
-
-Get current user response JSON (`GET /auth/me`):
-
-```json
-{
-  "id": 1,
-  "name": "John Student",
-  "email": "john@example.com",
-  "plan_id": 1,
-  "is_active": true,
-  "created_at": "2026-04-09T10:05:00Z",
-  "updated_at": "2026-04-09T10:05:00Z"
-}
-```
-
-Important: all `/plans`, `/users`, and `/billings` endpoints are protected now.
-Send JWT in `Authorization` header as:
-
-`Bearer <jwt_token>`
-
-### Health
-
-- GET /health
-
-Response JSON:
-
-```json
-{
-  "status": "ok"
-}
-```
-
-### Plans
-
-- POST /plans
-- GET /plans
-- GET /plans/:id
-- PATCH /plans/:id
-
-Create plan request JSON:
-
-```json
-{
-  "name": "Pro",
-  "description": "Pro monthly plan",
-  "price": 29.99,
-  "currency": "USD",
-  "billing_cycle": "monthly"
-}
-```
-
-Create plan response JSON:
-
-```json
-{
-  "id": 1,
-  "name": "Pro",
-  "description": "Pro monthly plan",
-  "price": 29.99,
-  "currency": "USD",
-  "billing_cycle": "monthly",
-  "created_at": "2026-04-03T10:00:00Z",
-  "updated_at": "2026-04-03T10:00:00Z"
-}
-```
-
-Update plan request JSON (partial):
-
-```json
-{
-  "price": 34.99,
-  "billing_cycle": "yearly"
-}
-```
-
-List plans response JSON:
-
-```json
-[
-  {
-    "id": 1,
-    "name": "Pro",
-    "description": "Pro monthly plan",
-    "price": 29.99,
-    "currency": "USD",
-    "billing_cycle": "monthly",
-    "created_at": "2026-04-03T10:00:00Z",
-    "updated_at": "2026-04-03T10:00:00Z"
-  }
-]
-```
-
-### Users
-
 - POST /users
 - GET /users
 - GET /users/:id
 - PATCH /users/:id
 
-Create user request JSON:
+Billing service:
 
-```json
-{
-  "name": "Alex Brown",
-  "email": "alex@example.com",
-  "plan_id": 1,
-  "is_active": true
-}
-```
-
-Create user response JSON:
-
-```json
-{
-  "id": 1,
-  "name": "Alex Brown",
-  "email": "alex@example.com",
-  "plan_id": 1,
-  "plan": {
-    "id": 1,
-    "name": "Pro",
-    "description": "Pro monthly plan",
-    "price": 29.99,
-    "currency": "USD",
-    "billing_cycle": "monthly",
-    "created_at": "2026-04-03T10:00:00Z",
-    "updated_at": "2026-04-03T10:00:00Z"
-  },
-  "is_active": true,
-  "created_at": "2026-04-03T10:05:00Z",
-  "updated_at": "2026-04-03T10:05:00Z"
-}
-```
-
-Update user request JSON (partial):
-
-```json
-{
-  "is_active": false
-}
-```
-
-List users response JSON:
-
-```json
-[
-  {
-    "id": 1,
-    "name": "Alex Brown",
-    "email": "alex@example.com",
-    "plan_id": 1,
-    "plan": {
-      "id": 1,
-      "name": "Pro",
-      "description": "Pro monthly plan",
-      "price": 29.99,
-      "currency": "USD",
-      "billing_cycle": "monthly",
-      "created_at": "2026-04-03T10:00:00Z",
-      "updated_at": "2026-04-03T10:00:00Z"
-    },
-    "is_active": true,
-    "created_at": "2026-04-03T10:05:00Z",
-    "updated_at": "2026-04-03T10:05:00Z"
-  }
-]
-```
-
-### Billings
-
+- POST /plans
+- GET /plans
+- GET /plans/:id
+- PATCH /plans/:id
 - POST /billings
 - GET /billings
 - GET /billings/:id
 - PATCH /billings/:id/pay
 
-Create billing request JSON:
+## API Examples (JSON)
+
+Accounts service
+
+POST /auth/register
+
+Request JSON:
 
 ```json
 {
-  "user_id": 1,
-  "plan_id": 1,
-  "amount": 29.99,
-  "due_date": "2026-05-01T00:00:00Z",
-  "description": "May subscription invoice"
+	"name": "John Student",
+	"email": "john@example.com",
+	"password": "12345678",
+	"plan_id": 1
 }
 ```
 
-Note: due_date must be RFC3339 format.
-
-Create billing response JSON:
+Response JSON:
 
 ```json
 {
-  "id": 1,
-  "user_id": 1,
-  "user": {
-    "id": 1,
-    "name": "Alex Brown",
-    "email": "alex@example.com",
-    "plan_id": 1,
-    "is_active": true,
-    "created_at": "2026-04-03T10:05:00Z",
-    "updated_at": "2026-04-03T10:05:00Z"
-  },
-  "plan_id": 1,
-  "plan": {
-    "id": 1,
-    "name": "Pro",
-    "description": "Pro monthly plan",
-    "price": 29.99,
-    "currency": "USD",
-    "billing_cycle": "monthly",
-    "created_at": "2026-04-03T10:00:00Z",
-    "updated_at": "2026-04-03T10:00:00Z"
-  },
-  "amount": 29.99,
-  "status": "pending",
-  "due_date": "2026-05-01T00:00:00Z",
-  "paid_at": null,
-  "description": "May subscription invoice",
-  "created_at": "2026-04-03T10:10:00Z",
-  "updated_at": "2026-04-03T10:10:00Z"
+	"token": "<jwt_token>",
+	"user": {
+		"id": 1,
+		"name": "John Student",
+		"email": "john@example.com",
+		"plan_id": 1,
+		"is_active": true,
+		"created_at": "2026-05-01T10:05:00Z",
+		"updated_at": "2026-05-01T10:05:00Z"
+	}
 }
 ```
 
-Pay billing response JSON:
+POST /auth/login
+
+Request JSON:
 
 ```json
 {
-  "id": 1,
-  "user_id": 1,
-  "plan_id": 1,
-  "amount": 29.99,
-  "status": "paid",
-  "due_date": "2026-05-01T00:00:00Z",
-  "paid_at": "2026-04-03T10:15:00Z",
-  "description": "May subscription invoice",
-  "created_at": "2026-04-03T10:10:00Z",
-  "updated_at": "2026-04-03T10:15:00Z"
+	"email": "john@example.com",
+	"password": "12345678"
 }
 ```
 
-List billings response JSON:
+Response JSON:
+
+```json
+{
+	"token": "<jwt_token>",
+	"user": {
+		"id": 1,
+		"name": "John Student",
+		"email": "john@example.com",
+		"plan_id": 1,
+		"is_active": true,
+		"created_at": "2026-05-01T10:05:00Z",
+		"updated_at": "2026-05-01T10:05:00Z"
+	}
+}
+```
+
+GET /auth/me
+
+Response JSON:
+
+```json
+{
+	"id": 1,
+	"name": "John Student",
+	"email": "john@example.com",
+	"plan_id": 1,
+	"is_active": true,
+	"created_at": "2026-05-01T10:05:00Z",
+	"updated_at": "2026-05-01T10:05:00Z"
+}
+```
+
+POST /users
+
+Request JSON:
+
+```json
+{
+	"name": "Alex Brown",
+	"email": "alex@example.com",
+	"plan_id": 1,
+	"is_active": true
+}
+```
+
+Response JSON:
+
+```json
+{
+	"id": 2,
+	"name": "Alex Brown",
+	"email": "alex@example.com",
+	"plan_id": 1,
+	"is_active": true,
+	"created_at": "2026-05-01T10:10:00Z",
+	"updated_at": "2026-05-01T10:10:00Z"
+}
+```
+
+GET /users
+
+Response JSON:
 
 ```json
 [
-  {
-    "id": 1,
-    "user_id": 1,
-    "plan_id": 1,
-    "amount": 29.99,
-    "status": "pending",
-    "due_date": "2026-05-01T00:00:00Z",
-    "paid_at": null,
-    "description": "May subscription invoice",
-    "created_at": "2026-04-03T10:10:00Z",
-    "updated_at": "2026-04-03T10:10:00Z"
-  }
+	{
+		"id": 2,
+		"name": "Alex Brown",
+		"email": "alex@example.com",
+		"plan_id": 1,
+		"is_active": true,
+		"created_at": "2026-05-01T10:10:00Z",
+		"updated_at": "2026-05-01T10:10:00Z"
+	}
 ]
 ```
 
-## Error Response Format
+GET /users/:id
 
-When request data is invalid or record is not found, API returns this shape:
+Response JSON:
 
 ```json
 {
-  "error": "message text"
+	"id": 2,
+	"name": "Alex Brown",
+	"email": "alex@example.com",
+	"plan_id": 1,
+	"is_active": true,
+	"created_at": "2026-05-01T10:10:00Z",
+	"updated_at": "2026-05-01T10:10:00Z"
+}
+```
+
+PATCH /users/:id
+
+Request JSON:
+
+```json
+{
+	"is_active": false
+}
+```
+
+Response JSON:
+
+```json
+{
+	"id": 2,
+	"name": "Alex Brown",
+	"email": "alex@example.com",
+	"plan_id": 1,
+	"is_active": false,
+	"created_at": "2026-05-01T10:10:00Z",
+	"updated_at": "2026-05-01T10:15:00Z"
+}
+```
+
+Billing service
+
+POST /plans
+
+Request JSON:
+
+```json
+{
+	"name": "Pro",
+	"description": "Pro monthly plan",
+	"price": 29.99,
+	"currency": "USD",
+	"billing_cycle": "monthly"
+}
+```
+
+Response JSON:
+
+```json
+{
+	"id": 1,
+	"name": "Pro",
+	"description": "Pro monthly plan",
+	"price": 29.99,
+	"currency": "USD",
+	"billing_cycle": "monthly",
+	"created_at": "2026-05-01T10:00:00Z",
+	"updated_at": "2026-05-01T10:00:00Z"
+}
+```
+
+GET /plans
+
+Response JSON:
+
+```json
+[
+	{
+		"id": 1,
+		"name": "Pro",
+		"description": "Pro monthly plan",
+		"price": 29.99,
+		"currency": "USD",
+		"billing_cycle": "monthly",
+		"created_at": "2026-05-01T10:00:00Z",
+		"updated_at": "2026-05-01T10:00:00Z"
+	}
+]
+```
+
+GET /plans/:id
+
+Response JSON:
+
+```json
+{
+	"id": 1,
+	"name": "Pro",
+	"description": "Pro monthly plan",
+	"price": 29.99,
+	"currency": "USD",
+	"billing_cycle": "monthly",
+	"created_at": "2026-05-01T10:00:00Z",
+	"updated_at": "2026-05-01T10:00:00Z"
+}
+```
+
+PATCH /plans/:id
+
+Request JSON:
+
+```json
+{
+	"price": 34.99,
+	"billing_cycle": "yearly"
+}
+```
+
+Response JSON:
+
+```json
+{
+	"id": 1,
+	"name": "Pro",
+	"description": "Pro monthly plan",
+	"price": 34.99,
+	"currency": "USD",
+	"billing_cycle": "yearly",
+	"created_at": "2026-05-01T10:00:00Z",
+	"updated_at": "2026-05-01T10:20:00Z"
+}
+```
+
+POST /billings
+
+Request JSON:
+
+```json
+{
+	"user_id": 2,
+	"plan_id": 1,
+	"amount": 29.99,
+	"due_date": "2026-05-10T00:00:00Z",
+	"description": "May subscription invoice"
+}
+```
+
+Response JSON:
+
+```json
+{
+	"id": 1,
+	"user_id": 2,
+	"plan_id": 1,
+	"plan": {
+		"id": 1,
+		"name": "Pro",
+		"description": "Pro monthly plan",
+		"price": 34.99,
+		"currency": "USD",
+		"billing_cycle": "yearly",
+		"created_at": "2026-05-01T10:00:00Z",
+		"updated_at": "2026-05-01T10:20:00Z"
+	},
+	"amount": 29.99,
+	"status": "pending",
+	"due_date": "2026-05-10T00:00:00Z",
+	"paid_at": null,
+	"description": "May subscription invoice",
+	"created_at": "2026-05-01T10:30:00Z",
+	"updated_at": "2026-05-01T10:30:00Z"
+}
+```
+
+GET /billings
+
+Response JSON:
+
+```json
+[
+	{
+		"id": 1,
+		"user_id": 2,
+		"plan_id": 1,
+		"plan": {
+			"id": 1,
+			"name": "Pro",
+			"description": "Pro monthly plan",
+			"price": 34.99,
+			"currency": "USD",
+			"billing_cycle": "yearly",
+			"created_at": "2026-05-01T10:00:00Z",
+			"updated_at": "2026-05-01T10:20:00Z"
+		},
+		"amount": 29.99,
+		"status": "pending",
+		"due_date": "2026-05-10T00:00:00Z",
+		"paid_at": null,
+		"description": "May subscription invoice",
+		"created_at": "2026-05-01T10:30:00Z",
+		"updated_at": "2026-05-01T10:30:00Z"
+	}
+]
+```
+
+GET /billings/:id
+
+Response JSON:
+
+```json
+{
+	"id": 1,
+	"user_id": 2,
+	"plan_id": 1,
+	"plan": {
+		"id": 1,
+		"name": "Pro",
+		"description": "Pro monthly plan",
+		"price": 34.99,
+		"currency": "USD",
+		"billing_cycle": "yearly",
+		"created_at": "2026-05-01T10:00:00Z",
+		"updated_at": "2026-05-01T10:20:00Z"
+	},
+	"amount": 29.99,
+	"status": "pending",
+	"due_date": "2026-05-10T00:00:00Z",
+	"paid_at": null,
+	"description": "May subscription invoice",
+	"created_at": "2026-05-01T10:30:00Z",
+	"updated_at": "2026-05-01T10:30:00Z"
+}
+```
+
+PATCH /billings/:id/pay
+
+Response JSON:
+
+```json
+{
+	"id": 1,
+	"user_id": 2,
+	"plan_id": 1,
+	"plan": {
+		"id": 1,
+		"name": "Pro",
+		"description": "Pro monthly plan",
+		"price": 34.99,
+		"currency": "USD",
+		"billing_cycle": "yearly",
+		"created_at": "2026-05-01T10:00:00Z",
+		"updated_at": "2026-05-01T10:20:00Z"
+	},
+	"amount": 29.99,
+	"status": "paid",
+	"due_date": "2026-05-10T00:00:00Z",
+	"paid_at": "2026-05-10T12:00:00Z",
+	"description": "May subscription invoice",
+	"created_at": "2026-05-01T10:30:00Z",
+	"updated_at": "2026-05-10T12:00:00Z"
 }
 ```
 
 ## Notes
 
-- PATCH endpoints support partial updates.
-- Users can be created with or without a plan.
-- If billing amount is not sent, it is taken from the selected plan price.
-- For this stage, passwords are checked as plain text (bcrypt dependency is added but not used yet).
+- JWT must be sent as: Authorization: Bearer <token>
+- Responses no longer embed related entities (no plan/user object nesting).
+- Internal service calls use the shared INTERNAL_TOKEN via X-Internal-Token header.
