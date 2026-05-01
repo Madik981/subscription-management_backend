@@ -1,26 +1,49 @@
-DB_URL ?= postgres://postgres:postgres@localhost:5432/subscription_management?sslmode=disable
-MIGRATIONS_DIR ?= migrations
+ACCOUNTS_DB_URL ?= postgres://postgres:postgres@localhost:5432/subscription_management_accounts?sslmode=disable
+BILLING_DB_URL ?= postgres://postgres:postgres@localhost:5432/subscription_management_billing?sslmode=disable
+
+ACCOUNTS_MIGRATIONS_DIR ?= accounts-service/migrations
+BILLING_MIGRATIONS_DIR ?= billing-service/migrations
 MIGRATE_BIN ?= migrate
 
-.PHONY: migrate-install migrate-up migrate-down migrate-down1 migrate-force migrate-version migrate-create
+.PHONY: migrate-install \
+	migrate-accounts-up migrate-accounts-down migrate-accounts-down1 migrate-accounts-force migrate-accounts-version migrate-accounts-create \
+	migrate-billing-up migrate-billing-down migrate-billing-down1 migrate-billing-force migrate-billing-version migrate-billing-create
 
 migrate-install:
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
-migrate-up:
-	$(MIGRATE_BIN) -path $(MIGRATIONS_DIR) -database "$(DB_URL)" up
+migrate-accounts-up:
+	$(MIGRATE_BIN) -path $(ACCOUNTS_MIGRATIONS_DIR) -database "$(ACCOUNTS_DB_URL)" up
 
-migrate-down:
-	$(MIGRATE_BIN) -path $(MIGRATIONS_DIR) -database "$(DB_URL)" down
+migrate-accounts-down:
+	$(MIGRATE_BIN) -path $(ACCOUNTS_MIGRATIONS_DIR) -database "$(ACCOUNTS_DB_URL)" down
 
-migrate-down1:
-	$(MIGRATE_BIN) -path $(MIGRATIONS_DIR) -database "$(DB_URL)" down 1
+migrate-accounts-down1:
+	$(MIGRATE_BIN) -path $(ACCOUNTS_MIGRATIONS_DIR) -database "$(ACCOUNTS_DB_URL)" down 1
 
-migrate-force:
-	$(MIGRATE_BIN) -path $(MIGRATIONS_DIR) -database "$(DB_URL)" force $(VERSION)
+migrate-accounts-force:
+	$(MIGRATE_BIN) -path $(ACCOUNTS_MIGRATIONS_DIR) -database "$(ACCOUNTS_DB_URL)" force $(VERSION)
 
-migrate-version:
-	$(MIGRATE_BIN) -path $(MIGRATIONS_DIR) -database "$(DB_URL)" version
+migrate-accounts-version:
+	$(MIGRATE_BIN) -path $(ACCOUNTS_MIGRATIONS_DIR) -database "$(ACCOUNTS_DB_URL)" version
 
-migrate-create:
-	$(MIGRATE_BIN) create -ext sql -dir $(MIGRATIONS_DIR) -seq $(NAME)
+migrate-accounts-create:
+	$(MIGRATE_BIN) create -ext sql -dir $(ACCOUNTS_MIGRATIONS_DIR) -seq $(NAME)
+
+migrate-billing-up:
+	$(MIGRATE_BIN) -path $(BILLING_MIGRATIONS_DIR) -database "$(BILLING_DB_URL)" up
+
+migrate-billing-down:
+	$(MIGRATE_BIN) -path $(BILLING_MIGRATIONS_DIR) -database "$(BILLING_DB_URL)" down
+
+migrate-billing-down1:
+	$(MIGRATE_BIN) -path $(BILLING_MIGRATIONS_DIR) -database "$(BILLING_DB_URL)" down 1
+
+migrate-billing-force:
+	$(MIGRATE_BIN) -path $(BILLING_MIGRATIONS_DIR) -database "$(BILLING_DB_URL)" force $(VERSION)
+
+migrate-billing-version:
+	$(MIGRATE_BIN) -path $(BILLING_MIGRATIONS_DIR) -database "$(BILLING_DB_URL)" version
+
+migrate-billing-create:
+	$(MIGRATE_BIN) create -ext sql -dir $(BILLING_MIGRATIONS_DIR) -seq $(NAME)
