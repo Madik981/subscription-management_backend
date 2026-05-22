@@ -41,8 +41,8 @@ docker compose up --build -d
 3) Run migrations from the host:
 
 ```bash
-make migrate-accounts-up ACCOUNTS_DB_URL=postgres://postgres:postgres@localhost:2345/subscription_management_accounts?sslmode=disable
-make migrate-billing-up BILLING_DB_URL=postgres://postgres:postgres@localhost:2346/subscription_management_billing?sslmode=disable
+make migrate-accounts-up
+make migrate-billing-up
 ```
 
 4) Stop the stack:
