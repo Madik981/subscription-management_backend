@@ -15,6 +15,8 @@ func main() {
 	db := connectDB()
 
 	router := gin.Default()
+	router.Use(corsMiddleware())
+
 	h := handlers.NewHandler(
 		db,
 		getEnv("JWT_SECRET", "super-secret-key"),
@@ -48,4 +50,25 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+
+		c.Header("Access-Control-Allow-Origin", origin)
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+		c.Header("Vary", "Origin")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
 }
