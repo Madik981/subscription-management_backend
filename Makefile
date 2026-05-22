@@ -7,10 +7,19 @@ MIGRATE_BIN ?= migrate
 
 .PHONY: migrate-install \
 	migrate-accounts-up migrate-accounts-down migrate-accounts-down1 migrate-accounts-force migrate-accounts-version migrate-accounts-create \
-	migrate-billing-up migrate-billing-down migrate-billing-down1 migrate-billing-force migrate-billing-version migrate-billing-create
+	migrate-billing-up migrate-billing-down migrate-billing-down1 migrate-billing-force migrate-billing-version migrate-billing-create \
+	test test-accounts test-billing
 
 migrate-install:
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+test: test-accounts test-billing
+
+test-accounts:
+	powershell -ExecutionPolicy Bypass -Command "Push-Location accounts-service; $$env:GOCACHE=(Join-Path (Get-Location) '.gocache'); $$env:GOTELEMETRY='off'; go test ./...; Pop-Location"
+
+test-billing:
+	powershell -ExecutionPolicy Bypass -Command "Push-Location billing-service; $$env:GOCACHE=(Join-Path (Get-Location) '.gocache'); $$env:GOTELEMETRY='off'; go test ./...; Pop-Location"
 
 migrate-accounts-up:
 	$(MIGRATE_BIN) -path $(ACCOUNTS_MIGRATIONS_DIR) -database "$(ACCOUNTS_DB_URL)" up
