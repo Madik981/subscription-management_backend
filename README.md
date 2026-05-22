@@ -35,7 +35,7 @@ cp .env.example .env
 2) Start the stack:
 
 ```bash
-docker compose up -d
+docker compose up --build -d
 ```
 
 3) Run migrations from the host:
@@ -50,6 +50,12 @@ make migrate-billing-up BILLING_DB_URL=postgres://postgres:postgres@localhost:23
 ```bash
 docker compose down
 ```
+
+Frontend:
+
+- Next.js app lives in `subscription-management_frontend/`
+- Docker Compose builds and serves it at `http://localhost:3000`
+- The UI talks to accounts-service on `http://localhost:8080` and billing-service on `http://localhost:8081`
 
 ## Environment Variables
 
@@ -82,6 +88,9 @@ Note: Postgres ports are exposed as 2345 (accounts) and 2346 (billing) on the ho
 
 ## Makefile Commands
 
+- make test
+- make test-accounts
+- make test-billing
 - make migrate-install
 - make migrate-accounts-up
 - make migrate-accounts-down
@@ -96,6 +105,15 @@ Note: Postgres ports are exposed as 2345 (accounts) and 2346 (billing) on the ho
 - make migrate-billing-force VERSION=1
 - make migrate-billing-create NAME=add_new_column
 
+## Tests
+
+Run all backend handler tests from the repository root:
+
+```bash
+make test
+```
+
+
 ## API Summary
 
 Accounts service:
@@ -107,6 +125,7 @@ Accounts service:
 - GET /users
 - GET /users/:id
 - PATCH /users/:id
+- DELETE /users/:id
 
 Billing service:
 
@@ -114,10 +133,13 @@ Billing service:
 - GET /plans
 - GET /plans/:id
 - PATCH /plans/:id
+- DELETE /plans/:id
 - POST /billings
 - GET /billings
 - GET /billings/:id
 - PATCH /billings/:id/pay
+- PATCH /billings/:id/fail
+- DELETE /billings/:id
 
 ## API Examples (JSON)
 
