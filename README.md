@@ -53,9 +53,10 @@ docker compose down
 
 Frontend:
 
-- Next.js app lives in `subscription-management_frontend/`
-- Docker Compose builds and serves it at `http://localhost:3000`
+- Next.js app source lives in `subscription-management_frontend/`
+- Docker Compose runs `madik98/subscription-management_frontend` and serves it at `http://localhost:3000`
 - The UI talks to accounts-service on `http://localhost:8080` and billing-service on `http://localhost:8081`
+- Frontend can be started independently with `docker compose up -d frontend`; if backend APIs are down, the UI still opens and shows API status as unavailable.
 
 ## Environment Variables
 
