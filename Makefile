@@ -1,5 +1,5 @@
-ACCOUNTS_DB_URL ?= postgres://postgres:postgres@localhost:5432/subscription_management_accounts?sslmode=disable
-BILLING_DB_URL ?= postgres://postgres:postgres@localhost:5432/subscription_management_billing?sslmode=disable
+ACCOUNTS_DB_URL ?= postgres://postgres:postgres@localhost:2345/subscription_management_accounts?sslmode=disable
+BILLING_DB_URL ?= postgres://postgres:postgres@localhost:2346/subscription_management_billing?sslmode=disable
 
 ACCOUNTS_MIGRATIONS_DIR ?= accounts-service/migrations
 BILLING_MIGRATIONS_DIR ?= billing-service/migrations
