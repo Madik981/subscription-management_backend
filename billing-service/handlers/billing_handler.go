@@ -137,3 +137,61 @@ func (h *Handler) payBilling(c *gin.Context) {
 
 	c.JSON(http.StatusOK, billing)
 }
+
+func (h *Handler) failBilling(c *gin.Context) {
+	billingID, err := parseID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid billing id"})
+		return
+	}
+
+	var billing models.Billing
+	if err := h.db.First(&billing, billingID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "billing not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	billing.Status = models.BillingStatusFailed
+	billing.PaidAt = nil
+
+	if err := h.db.Save(&billing).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.db.Preload("Plan").First(&billing, billing.ID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, billing)
+}
+
+func (h *Handler) deleteBilling(c *gin.Context) {
+	billingID, err := parseID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid billing id"})
+		return
+	}
+
+	var billing models.Billing
+	if err := h.db.First(&billing, billingID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "billing not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.db.Delete(&billing).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
