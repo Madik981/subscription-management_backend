@@ -53,6 +53,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 		users.GET("", h.listUsers)
 		users.GET("/:id", h.getUser)
 		users.PATCH("/:id", h.updateUser)
+		users.DELETE("/:id", h.deleteUser)
 	}
 
 	internal := router.Group("/internal")

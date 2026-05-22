@@ -1,2 +1,6 @@
 .idea
 .env
+.gocache/
+node_modules/
+.next/
+*.go.[0-9]*

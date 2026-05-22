@@ -50,6 +50,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 		plans.GET("", h.listPlans)
 		plans.GET("/:id", h.getPlan)
 		plans.PATCH("/:id", h.updatePlan)
+		plans.DELETE("/:id", h.deletePlan)
 	}
 
 	billings := protected.Group("/billings")
@@ -58,6 +59,8 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 		billings.GET("", h.listBillings)
 		billings.GET("/:id", h.getBilling)
 		billings.PATCH("/:id/pay", h.payBilling)
+		billings.PATCH("/:id/fail", h.failBilling)
+		billings.DELETE("/:id", h.deleteBilling)
 	}
 }
 

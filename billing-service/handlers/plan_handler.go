@@ -125,3 +125,38 @@ func (h *Handler) updatePlan(c *gin.Context) {
 
 	c.JSON(http.StatusOK, plan)
 }
+
+func (h *Handler) deletePlan(c *gin.Context) {
+	planID, err := parseID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid plan id"})
+		return
+	}
+
+	var plan models.Plan
+	if err := h.db.First(&plan, planID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "plan not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var billingCount int64
+	if err := h.db.Model(&models.Billing{}).Where("plan_id = ?", plan.ID).Count(&billingCount).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if billingCount > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "plan has billings and cannot be deleted"})
+		return
+	}
+
+	if err := h.db.Delete(&plan).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
